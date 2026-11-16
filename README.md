@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🎓 Student Management System
 
 A simple, modern, and fully functional **Student Management System** developed using **Python Full Stack Development (Flask, SQLite, HTML5, CSS3)**. Designed for academic project submissions and summer internship demonstrations.
@@ -94,3 +95,6 @@ Once the terminal outputs:
 ```
 Open your web browser (Chrome, Edge, Firefox) and navigate to:
 👉 **[http://127.0.0.1:5000](http://127.0.0.1:5000)**
+=======
+# Student-Management-System
+>>>>>>> 3e7359ebbc13786f48646ee833f96cc56abc59ec
