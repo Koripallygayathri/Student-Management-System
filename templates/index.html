@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management System - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <!-- Top Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="{{ url_for('index') }}" class="nav-brand">
+                <span class="brand-icon">🎓</span>
+                <span class="brand-title">Student Management System</span>
+            </a>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="{{ url_for('index') }}" class="nav-link active">📊 Dashboard</a></li>
+                    <li><a href="{{ url_for('add_student') }}" class="nav-link nav-link-btn">➕ Add Student</a></li>
+                    <li class="user-pill" title="Logged in administrator">
+                        <span>👤</span> {{ session.get('user', 'admin')|capitalize }}
+                    </li>
+                    <li><a href="{{ url_for('change_password') }}" class="nav-link" title="Change admin password">🔐 Change Password</a></li>
+                    <li><a href="{{ url_for('logout') }}" class="nav-link btn-logout" title="Sign out of system">🚪 Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+
+        <!-- Flash Alert Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="alert-container">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            <span>
+                                {% if category == 'success' %}✅{% elif category == 'danger' %}❌{% else %}⚠️{% endif %}
+                                {{ message }}
+                            </span>
+                            <button class="alert-close" onclick="this.parentElement.remove();">&times;</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Dashboard Summary Statistics -->
+        <section class="dashboard-grid">
+            <div class="stat-card">
+                <div class="stat-info">
+                    <h3>Total Students</h3>
+                    <div class="stat-number">{{ total_students }}</div>
+                </div>
+                <div class="stat-icon">👨‍🎓</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-info">
+                    <h3>Departments</h3>
+                    <div class="stat-number">{{ total_depts }}</div>
+                </div>
+                <div class="stat-icon">🏛️</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-info">
+                    <h3>Database Engine</h3>
+                    <div class="stat-number" style="font-size: 1.3rem; color: #1976d2;">SQLite 3</div>
+                </div>
+                <div class="stat-icon">💾</div>
+            </div>
+        </section>
+
+        <!-- Search & Quick Action Bar -->
+        <section class="action-bar">
+            <form action="{{ url_for('index') }}" method="GET" class="search-form">
+                <div class="search-input-group">
+                    <span class="search-icon">🔍</span>
+                    <input 
+                        type="text" 
+                        name="search" 
+                        class="search-input" 
+                        placeholder="Search by Roll Number or Name..." 
+                        value="{{ search_query }}"
+                    >
+                </div>
+
+                <!-- Department Quick Filter Dropdown -->
+                <select name="department" class="filter-select" onchange="this.form.submit()" title="Filter by Department">
+                    <option value="">🏛️ All Departments</option>
+                    {% for dept in all_departments %}
+                        <option value="{{ dept }}" {% if selected_dept == dept %}selected{% endif %}>
+                            {{ dept }}
+                        </option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+                {% if search_query or selected_dept %}
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm">Reset</a>
+                {% endif %}
+            </form>
+
+            <a href="{{ url_for('add_student') }}" class="btn btn-primary">
+                <span>➕</span> Add New Student
+            </a>
+        </section>
+
+        <!-- Student Records Table Card -->
+        <section class="table-card">
+            <div class="table-header-bar">
+                <div class="table-title">
+                    <span>📋 All Student Records</span>
+                    <span class="record-badge">{{ students|length }} Shown</span>
+                </div>
+                {% if selected_dept or search_query %}
+                    <small style="color: var(--text-secondary);">
+                        Filtering by: 
+                        {% if selected_dept %}<strong>Dept: "{{ selected_dept }}"</strong>{% endif %}
+                        {% if selected_dept and search_query %} &bull; {% endif %}
+                        {% if search_query %}<strong>Search: "{{ search_query }}"</strong>{% endif %}
+                    </small>
+                {% endif %}
+            </div>
+
+            <div class="table-responsive">
+                <table class="student-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">#</th>
+                            <th>Roll Number</th>
+                            <th>Student Name</th>
+                            <th>Email Address</th>
+                            <th>Department</th>
+                            <th>Phone Number</th>
+                            <th style="text-align: center; width: 230px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if students %}
+                            {% for student in students %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td><span class="student-roll">{{ student['roll_number'] }}</span></td>
+                                    <td><span class="student-name">{{ student['name'] }}</span></td>
+                                    <td>{{ student['email'] }}</td>
+                                    <td><span class="dept-badge">{{ student['department'] }}</span></td>
+                                    <td>{{ student['phone'] }}</td>
+                                    <td>
+                                        <div class="table-actions" style="justify-content: center;">
+                                            <button 
+                                                type="button" 
+                                                class="btn btn-view btn-sm" 
+                                                onclick="openStudentCard('{{ student['name']|escape }}', '{{ student['roll_number']|escape }}', '{{ student['email']|escape }}', '{{ student['department']|escape }}', '{{ student['phone']|escape }}', '{{ student['created_at']|default('') }}')"
+                                                title="View Student Profile ID Card"
+                                            >
+                                                👁️ View
+                                            </button>
+                                            <a href="{{ url_for('update_student', id=student['id']) }}" class="btn btn-edit btn-sm" title="Edit Student">
+                                                ✏️ Edit
+                                            </a>
+                                            <a 
+                                                href="{{ url_for('delete_student', id=student['id']) }}" 
+                                                class="btn btn-delete btn-sm" 
+                                                onclick="return confirm('Are you sure you want to delete {{ student['name'] }} (Roll: {{ student['roll_number'] }})?');"
+                                                title="Delete Student"
+                                            >
+                                                🗑️ Delete
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7">
+                                    <div class="empty-state">
+                                        <div class="empty-icon">📭</div>
+                                        <h3>No Student Records Found</h3>
+                                        <p>
+                                            {% if selected_dept or search_query %}
+                                                No students matched your filter criteria.
+                                            {% else %}
+                                                No students have been registered yet.
+                                            {% endif %}
+                                        </p>
+                                        {% if selected_dept or search_query %}
+                                            <a href="{{ url_for('index') }}" class="btn btn-secondary">Clear Filter</a>
+                                        {% else %}
+                                            <a href="{{ url_for('add_student') }}" class="btn btn-primary">Add Your First Student</a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Student ID Card Profile Modal -->
+    <div id="studentModal" class="modal-overlay" onclick="closeStudentModal(event)">
+        <div class="modal-card" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-header-title">
+                    <span style="font-size: 1.3rem;">🎓</span>
+                    <div>
+                        <h3 style="font-size: 1.05rem; margin: 0; font-weight: 700;">Student Identity Card</h3>
+                        <small style="opacity: 0.85; font-size: 0.76rem;">Official Academic Record</small>
+                    </div>
+                </div>
+                <button class="modal-close-btn" onclick="closeStudentModal(event)">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Avatar & Hero Section -->
+                <div class="id-card-hero">
+                    <div id="modalAvatar" class="id-avatar">ST</div>
+                    <h2 id="modalName" class="id-name">Student Name</h2>
+                    <div id="modalRoll" class="id-roll">CS-101</div>
+                    <div>
+                        <span class="id-status"><span class="status-dot"></span> Active Student</span>
+                    </div>
+                </div>
+
+                <!-- Structured Details -->
+                <div class="id-details-list">
+                    <div class="id-detail-item">
+                        <span class="id-detail-label">🏛️ Department</span>
+                        <span id="modalDept" class="id-detail-value">Computer Science</span>
+                    </div>
+                    <div class="id-detail-item">
+                        <span class="id-detail-label">📧 Email Address</span>
+                        <span id="modalEmail" class="id-detail-value">student@example.com</span>
+                    </div>
+                    <div class="id-detail-item">
+                        <span class="id-detail-label">📞 Phone Number</span>
+                        <span id="modalPhone" class="id-detail-value">9876543210</span>
+                    </div>
+                    <div class="id-detail-item">
+                        <span class="id-detail-label">📅 Enrolled Date</span>
+                        <span id="modalDate" class="id-detail-value">2026-11-09</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeStudentModal(event)">Close</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="window.print()">🖨️ Print ID Card</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>
+            &copy; 2026 <strong>Student Management System</strong> | All Rights Reserved
+        </p>
+    </footer>
+
+    <script>
+        // Modal handlers for Student ID Card Profile View
+        function openStudentCard(name, roll, email, dept, phone, date) {
+            document.getElementById('modalName').textContent = name;
+            document.getElementById('modalRoll').textContent = roll;
+            document.getElementById('modalEmail').textContent = email;
+            document.getElementById('modalDept').textContent = dept;
+            document.getElementById('modalPhone').textContent = phone;
+            document.getElementById('modalDate').textContent = date ? date.split(' ')[0] : 'Enrolled';
+
+            // Generate initials (e.g., Aarav Sharma -> AS)
+            const parts = name.trim().split(' ').filter(Boolean);
+            let initials = '';
+            if (parts.length >= 2) {
+                initials = (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+            } else if (parts.length === 1 && parts[0].length > 0) {
+                initials = parts[0].slice(0, 2).toUpperCase();
+            } else {
+                initials = 'ST';
+            }
+            document.getElementById('modalAvatar').textContent = initials;
+
+            const modal = document.getElementById('studentModal');
+            modal.style.display = 'flex';
+        }
+
+        function closeStudentModal(event) {
+            document.getElementById('studentModal').style.display = 'none';
+        }
+
+        // Close modal on Escape key press
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('studentModal');
+                if (modal) modal.style.display = 'none';
+            }
+        });
+
+        // Automatically fade out alerts after 5 seconds
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                alert.style.transition = 'opacity 0.5s ease';
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 500);
+            });
+        }, 5000);
+    </script>
+</body>
+</html>
